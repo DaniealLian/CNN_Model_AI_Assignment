@@ -73,7 +73,15 @@ class CNN_Model(nn.Module):
     
 def get_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    return CNN_Model(), device
+    model = CNN_Model()
+    model_dir = 'model_weights.pth'
+
+    state_dict = torch.load(model_dir, map_location=device)
+    model.load_state_dict(state_dict)
+
+    model = model.to(device)
+    model.eval()
+    return model, device
 
 def prep_img(image):
     transform = transforms.Compose([
@@ -117,7 +125,6 @@ def main():
         image = Image.open(img_input)
         st.image(image, caption="Uploaded Image", use_container_width=True)
         model, device = get_model()
-        
         image_tensor = prep_img(image)
         predict_result, confidence = prediction(model, image_tensor, device)
         

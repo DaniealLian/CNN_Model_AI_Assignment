@@ -83,9 +83,11 @@ def prep_img(image):
     ])
     
     if image.mode != 'RGB':
-        prep_img = image.convert('RGB')
-    
-    return transform(prep_img).unsqueeze(0)
+        image = image.convert('RGB')
+
+    # Apply transforms
+    image_tensor = transform(image).unsqueeze(0)  # Add batch dimension
+    return image_tensor
 
 def prediction(model, image_tensor, device):
     image_tensor = image_tensor.to(device)

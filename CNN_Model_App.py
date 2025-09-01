@@ -75,15 +75,15 @@ def get_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     return CNN_Model(), device
 
-def To_be_transformed_img(img):
+def prep_img(image):
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
     ])
     
-    if img.mode != 'RGB':
-        img_trans_ed = img.convert('RGB')
+    if image.mode != 'RGB':
+        img_trans_ed = image.convert('RGB')
     
     return transform(img_trans_ed).unsqueeze(0)
 
@@ -117,7 +117,7 @@ def main():
         model, device = get_model()
         
         if st.button("Analyze Damage"):
-                image_tensor = To_be_transformed_img(img)
+                image_tensor = prep_img(img)
                 class_idx, confidence = prediction(model, image_tensor, device)
                 
                 damage = dmg_types[class_idx]

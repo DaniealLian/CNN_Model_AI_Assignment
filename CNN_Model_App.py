@@ -7,9 +7,10 @@ import os
 
 class CNN_Model(nn.Module):
     def __init__(self, num_classes=7):
-        super().__init__()
+        super(CNN_Model, self).__init__()
         
-        self.features = nn.Sequential(
+        # Layer 1
+        self.layer1 = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
             nn.LeakyReLU(negative_slope=0.1),
@@ -17,7 +18,10 @@ class CNN_Model(nn.Module):
             nn.BatchNorm2d(32),
             nn.LeakyReLU(negative_slope=0.1),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            
+        )
+        
+        # Layer 2
+        self.layer2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
             nn.LeakyReLU(negative_slope=0.1),
@@ -25,7 +29,10 @@ class CNN_Model(nn.Module):
             nn.BatchNorm2d(64),
             nn.LeakyReLU(negative_slope=0.1),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            
+        )
+
+        # Layer 3
+        self.layer3 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(negative_slope=0.1),
@@ -33,7 +40,10 @@ class CNN_Model(nn.Module):
             nn.BatchNorm2d(128),
             nn.LeakyReLU(negative_slope=0.1),
             nn.MaxPool2d(kernel_size=2, stride=2),
+        )
 
+        # Layer 4
+        self.layer4 = nn.Sequential(
             nn.Conv2d(128, 256, kernel_size=3, padding=1),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(negative_slope=0.1),
@@ -41,7 +51,10 @@ class CNN_Model(nn.Module):
             nn.BatchNorm2d(256),
             nn.LeakyReLU(negative_slope=0.1),
             nn.MaxPool2d(kernel_size=2, stride=2),
+        )
 
+        # Layer 5
+        self.layer5 = nn.Sequential(
             nn.Conv2d(256, 512, kernel_size=3, padding=1),
             nn.BatchNorm2d(512),
             nn.LeakyReLU(negative_slope=0.1),
@@ -52,13 +65,15 @@ class CNN_Model(nn.Module):
             nn.Dropout(p=0.4)
         )
         
-        self.classifier = nn.Sequential(
-            nn.Flatten(),
+        # Global Average Pooling and Fully Connected
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Sequential(
             nn.Linear(512, 1024),
             nn.BatchNorm1d(1024),
             nn.LeakyReLU(negative_slope=0.1),
             nn.Dropout(p=0.45),
 
+            # Dense
             nn.Linear(1024, 512),
             nn.BatchNorm1d(512),
             nn.LeakyReLU(negative_slope=0.1),

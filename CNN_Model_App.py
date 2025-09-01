@@ -11,9 +11,9 @@ from io import BytesIO
 import base64
 
 # Your model architecture (same as before)
-class CustomCNN(nn.Module):
+class CarCNN(nn.Module):
     def __init__(self, num_classes=7):
-        super(CustomCNN, self).__init__()
+        super(CarCNN, self).__init__()
         
         # Layer 1
         self.layer1 = nn.Sequential(
@@ -102,10 +102,10 @@ class CustomCNN(nn.Module):
 @st.cache_resource
 def load_model(model_path, num_classes=7):
     """
-    Load the trained model. Cached to avoid reloading on every interaction.
+    Load the trained model.
     """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = CustomCNN(num_classes=num_classes)
+    model = CarCNN(num_classes=num_classes)
     
     try:
         # Load the trained weights
@@ -119,8 +119,7 @@ def load_model(model_path, num_classes=7):
 
 def preprocess_image(image, target_size=(224, 224)):
     """
-    Preprocess the uploaded image for model prediction.
-    Uses the same preprocessing pipeline as training.
+    Preprocess
     """
     # Define the same transforms used during testing (no augmentation)
     transform = transforms.Compose([
@@ -263,14 +262,14 @@ def main():
         if uploaded_file is not None:
             # Display the uploaded image
             image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_column_width=True)
+            st.image(image, caption="Uploaded Image", use_container_width=True)
             
             # Image info
             st.write(f"**Image size:** {image.size}")
             st.write(f"**Image mode:** {image.mode}")
     
     with col2:
-        st.subheader("🔮 Prediction Results")
+        st.subheader("Prediction Results")
         
         if uploaded_file is not None:
             try:
@@ -345,7 +344,7 @@ def main():
         st.sidebar.write(f"**Device:** {device}")
     
     # About section
-    with st.expander("ℹ️ About this App"):
+    with st.expander("ℹAbout this App"):
         st.markdown("""
         This Streamlit app uses a custom CNN model to detect and classify car damage.
         

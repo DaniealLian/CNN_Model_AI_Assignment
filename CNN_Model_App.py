@@ -99,7 +99,7 @@ def prediction(model, image_tensor, device):
 
 def main():
     st.title("Car Damage Detection")    
-    uploaded_file = st.file_uploader("Choose car image", type=['jpg', 'jpeg', 'png'])
+    img_input = st.file_uploader("Choose car image", type=['jpg', 'jpeg', 'png'])
 
     dmg_types = [
         'Door dent',
@@ -111,31 +111,30 @@ def main():
         'Broken head light'
     ]
     
-    if uploaded_file:
-        image = Image.open(uploaded_file)
+    if img_input:
+        image = Image.open(img_input)
         st.image(image, caption="Uploaded Image", use_container_width=True)
         model, device = get_model()
         
-        if st.button("Analyze Damage"):
-                image_tensor = prep_img(image)
-                predict_result, confidence = prediction(model, image_tensor, device)
-                
-                damage = dmg_types[predict_result]
-                conf_percent = confidence * 100
-                
-                st.success("Analysis Complete!")
-                st.metric(
-                    label="Detected Damage",
-                    value=damage, 
-                    delta=f"{conf_percent:.1f}% confidence"
-                    )
-                
-                if conf_percent > 80:
-                    st.success("High confidence in this detection")
-                elif conf_percent > 60:
-                    st.info("Moderate confidence in this detection")
-                else:
-                    st.warning("Low confidence - may need manual verification")
+        image_tensor = prep_img(image)
+        predict_result, confidence = prediction(model, image_tensor, device)
+        
+        damage = dmg_types[predict_result]
+        conf_percent = confidence * 100
+        
+        st.success("Analysis Complete!")
+        st.metric(
+            label="Detected Damage",
+            value=damage, 
+            delta=f"{conf_percent:.1f}% confidence"
+            )
+        
+        if conf_percent > 80:
+            st.success("High confidence in this detection")
+        elif conf_percent > 60:
+            st.info("Moderate confidence in this detection")
+        else:
+            st.warning("Low confidence - may need manual verification")
 
 if __name__ == "__main__":
     main()

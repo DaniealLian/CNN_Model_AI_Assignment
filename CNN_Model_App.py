@@ -1,15 +1,15 @@
-import streamlit as st
+import tkinter as tk
+from tkinter import ttk, filedialog
+from PIL import Image, ImageTk
 import torch
 import torch.nn as nn
-from PIL import Image
 from torchvision import transforms
-import os
 
-class CNN_Model(nn.Module):
+
+class BasicCnnModel(nn.Module):
     def __init__(self, num_classes=7):
-        super(CNN_Model, self).__init__()
+        super(BasicCnnModel, self).__init__()
         
-        # Layer 1
         self.layer1 = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
@@ -20,7 +20,6 @@ class CNN_Model(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
         
-        # Layer 2
         self.layer2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64),
@@ -31,7 +30,6 @@ class CNN_Model(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
 
-        # Layer 3
         self.layer3 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.BatchNorm2d(128),
@@ -42,7 +40,6 @@ class CNN_Model(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
 
-        # Layer 4
         self.layer4 = nn.Sequential(
             nn.Conv2d(128, 256, kernel_size=3, padding=1),
             nn.BatchNorm2d(256),
@@ -53,7 +50,6 @@ class CNN_Model(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
 
-        # Layer 5
         self.layer5 = nn.Sequential(
             nn.Conv2d(256, 512, kernel_size=3, padding=1),
             nn.BatchNorm2d(512),
@@ -65,111 +61,147 @@ class CNN_Model(nn.Module):
             nn.Dropout(p=0.4)
         )
         
-        # Global Average Pooling and Fully Connected
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Sequential(
             nn.Linear(512, 1024),
             nn.BatchNorm1d(1024),
             nn.LeakyReLU(negative_slope=0.1),
             nn.Dropout(p=0.45),
-
-            # Dense
             nn.Linear(1024, 512),
             nn.BatchNorm1d(512),
             nn.LeakyReLU(negative_slope=0.1),
             nn.Dropout(p=0.5),
-
             nn.Linear(512, num_classes),
         )
     
     def forward(self, x):
-        x = self.features(x)
-        x = self.classifier(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.layer5(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
         return x
 
-def get_model():
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = CNN_Model()
-    
-    # Load pre-trained weights - you need to have a trained model file
-    # Replace 'model_weights.pth' with your actual model file path
-    model_path = 'model_weights.pth'  # Update this path to your trained model file
-    
-    if os.path.exists(model_path):
-        # Load the state dict
-        state_dict = torch.load(model_path, map_location=device)
-        model.load_state_dict(state_dict)
-    else:
-        st.warning(f"Model weights file not found at {model_path}. Using untrained model.")
-    
-    model = model.to(device)
-    model.eval()  # Set to evaluation mode
-    return model, device
-
-def prep_img(image, target_size=(224, 224)):
-    transform = transforms.Compose([
-        transforms.Resize(target_size),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # ImageNet standards
-    ])
-    
-    if image.mode != 'RGB':
-        image = image.convert('RGB')
-
-    # Apply transforms
-    image_tensor = transform(image).unsqueeze(0)  # Add batch dimension
-    return image_tensor
-
-def prediction(model, image_tensor, device):
-    image_tensor = image_tensor.to(device)
-    
-    with torch.no_grad():
-        outputs = model(image_tensor)
-        probs = torch.softmax(outputs, dim=1)
-        confidence, predicted = torch.max(probs, 1)
-    
-    return predicted.item(), confidence.item()
-
-def main():
-    st.title("Car Damage Detection")    
-    img_input = st.file_uploader("Choose car image", type=['jpg', 'jpeg', 'png'])
-
-    dmg_types = [
-        'Door dent',
-        'Bumper dent', 
-        'Door scratch',
-        'Bumper scratch',
-        'Broken glass',
-        'Broken tail light',
-        'Broken head light'
-    ]
-    
-    if img_input:
-        image = Image.open(img_input)
-        st.image(image, caption="Uploaded Image", use_container_width=True)
+class CnnDmgDetectorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Car body damage detector")
+        self.root.geometry("500x600")
+        self.root.configure(bg='white')
         
-        # Add a loading spinner while processing
-        with st.spinner('Loading model and analyzing image...'):
-            model, device = get_model()
-            image_tensor = prep_img(image)
-            predict_result, confidence = prediction(model, image_tensor, device)
+        self.model = None
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.current_image = None
         
-        damage = dmg_types[predict_result]
-        conf_percent = confidence * 100
+        self.damage_types = [
+            'Door dent',
+            'Bumper dent', 
+            'Door scratch',
+            'Bumper scratch',
+            'Broken glass',
+            'Broken tail light',
+            'Broken head light'
+        ]
         
-        st.success("Analysis Complete!")
-        st.metric(
-            label="Detected Damage",
-            value=damage, 
-            delta=f"{conf_percent:.1f}% confidence"
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+        
+        self.setup_ui()
+        self.load_model()
+    
+    def setup_ui(self):
+        main_frame = ttk.Frame(self.root, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        title = ttk.Label(main_frame, text="Car damage detector", font=('Arial', 16, 'bold'))
+        title.pack(pady=(0, 20))
+
+        select_btn = ttk.Button(main_frame, text="Select car image", command=self.insert_img, width=20)
+        select_btn.pack(pady=10)
+        
+        self.selected_img = ttk.Label(main_frame, text="No image selected", font=('Arial', 10), foreground='gray')
+        self.selected_img.pack(pady=20)
+        
+        self.analyse_dmg_btn = ttk.Button(main_frame, text="Analyse damage", command=self.analyse, state='disabled', width=20)
+        self.analyse_dmg_btn.pack(pady=10)
+        
+        results_frame = ttk.LabelFrame(main_frame, text="Results", padding="15")
+        results_frame.pack(fill=tk.X, pady=20)
+        
+        ttk.Label(results_frame, text="Detected damage:", font=('Arial', 10, 'bold')).pack(anchor=tk.W)
+        self.damage = tk.StringVar(value="No analysis yet")
+        analysed_dmg_label = ttk.Label(results_frame, textvariable=self.damage, 
+                                font=('Arial', 12), foreground='blue')
+        analysed_dmg_label.pack(anchor=tk.W, pady=(5, 15))
+        
+        ttk.Label(results_frame, text="Confidence level:", font=('Arial', 10, 'bold')).pack(anchor=tk.W)
+        self.analysed_confidence = tk.StringVar(value="0%")
+        analysed_conf_label = ttk.Label(results_frame, textvariable=self.analysed_confidence, 
+                                    font=('Arial', 12), foreground='green')
+        analysed_conf_label.pack(anchor=tk.W)
+        
+    def load_model(self):
+        model_path = "cnn_model_weights.pth"
+        
+        self.model = BasicCnnModel(num_classes=7)
+        state_dict = torch.load(model_path, map_location=self.device)
+        self.model.load_state_dict(state_dict)
+        self.model.eval()
+        self.model.to(self.device)
+    
+    def insert_img(self):
+        file_path = filedialog.askopenfilename(
+            title="Select car image",
+            filetypes=[("Image Files", "*.png *.jpg *.jpeg")]
         )
         
-        if conf_percent > 80:
-            st.success("High confidence in this detection")
-        elif conf_percent > 60:
-            st.info("Moderate confidence in this detection")
-        else:
-            st.warning("Low confidence - may need manual verification")
+        if file_path:
+            self.current_image = Image.open(file_path)
+            
+            display_image = self.current_image.copy()
+            display_image.thumbnail((300, 200), Image.Resampling.LANCZOS)
+            
+            photo = ImageTk.PhotoImage(display_image)
+            self.selected_img.configure(image=photo, text="")
+            self.selected_img.image = photo
+            
+            if self.model is not None:
+                self.analyse_dmg_btn.configure(state='normal')
+            
+            self.damage.set("No analysis yet")
+            self.analysed_confidence.set("0%")
+    
+    def analyse(self):
+        self.root.update()
+        
+        image = self.current_image.convert('RGB')
+            
+        image_tensor = self.transform(image).unsqueeze(0).to(self.device)
+        
+        with torch.no_grad():
+            outputs = self.model(image_tensor)
+            probabilities = torch.softmax(outputs, dim=1)
+            confidence, predicted = torch.max(probabilities, 1)
+            
+            predicted_class = predicted.item()
+            confidence_score = confidence.item()
+        
+        dmg_type = self.damage_types[predicted_class]
+        conf_percent = confidence_score * 100
+        
+        self.damage.set(dmg_type)
+        self.analysed_confidence.set(f"{conf_percent:.2f}%")            
+
+def main():
+    root = tk.Tk()
+    CnnDmgDetectorApp(root)
+    root.mainloop()
 
 if __name__ == "__main__":
     main()

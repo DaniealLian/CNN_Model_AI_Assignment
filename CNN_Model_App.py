@@ -120,12 +120,13 @@ def load_model(model_path, num_classes=7):
 def preprocess_image(image, target_size=(224, 224)):
     """
     Preprocess the uploaded image for model prediction.
+    Uses the same preprocessing pipeline as training.
     """
-    # Define the same transforms used during training
+    # Define the same transforms used during testing (no augmentation)
     transform = transforms.Compose([
         transforms.Resize(target_size),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # ImageNet standards
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # ImageNet normalization
     ])
     
     # Convert to RGB if necessary
@@ -182,14 +183,14 @@ def main():
     # Page configuration
     st.set_page_config(
         page_title="Custom CNN Image Classifier",
-        page_icon="🖼️",
+        page_icon="",
         layout="wide",
         initial_sidebar_state="expanded"
     )
     
     # Title and description
-    st.title("🖼️ Custom CNN Image Classifier")
-    st.markdown("Upload an image to get predictions from your trained CNN model!")
+    st.title("Car Damage Detection System")
+    st.markdown("Upload an image of a car to detect and classify damage types!")
     
     # Sidebar configuration
     st.sidebar.header("Model Configuration")
@@ -209,8 +210,16 @@ def main():
         help="Number of classes your model was trained on"
     )
     
-    # Class names - you should replace these with your actual class names
-    default_classes = [f"Class_{i}" for i in range(num_classes)]
+    # Class names - your actual car damage detection classes
+    default_classes = [
+        'Dent on the door detected',
+        'Dent on the bumper detected', 
+        'Scratch on the door detected',
+        'Scratch on the bumper detected',
+        'Broken glass detected',
+        'Broken tail light detected',
+        'Broken head light detected'
+    ]
     class_names = st.sidebar.text_area(
         "Class Names (one per line)",
         value="\n".join(default_classes),
@@ -242,13 +251,13 @@ def main():
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.subheader("📤 Upload Image")
+        st.subheader("Upload Image")
         
         # File uploader
         uploaded_file = st.file_uploader(
-            "Choose an image...",
-            type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
-            help="Upload an image file for classification"
+            "Choose a car image...",
+            type=['png', 'jpg', 'jpeg'],
+            help="Upload an image of a car to detect damage"
         )
         
         if uploaded_file is not None:
@@ -278,12 +287,23 @@ def main():
                 # Display results
                 st.success("Prediction completed!")
                 
-                # Main prediction
+                # Main prediction with better formatting
+                predicted_damage = class_names[predicted_class]
                 st.metric(
-                    label="Predicted Class",
-                    value=class_names[predicted_class],
-                    delta=f"{confidence*100:.2f}% confidence"
+                    label="🔍 Damage Detection Result",
+                    value=predicted_damage,
+                    delta=f"{confidence*100:.1f}% confidence"
                 )
+                
+                # Add visual indicator based on damage type
+                if 'glass' in predicted_damage.lower():
+                    st.error("Glass damage detected")
+                elif 'dent' in predicted_damage.lower():
+                    st.warning("Body damage detected")
+                elif 'scratch' in predicted_damage.lower():
+                    st.info("Surface damage detected")
+                elif 'lamp' in predicted_damage.lower() or 'light' in predicted_damage.lower():
+                    st.warning("Lighting system damage detected")
                 
                 # Confidence indicator
                 if confidence > 0.8:
@@ -299,7 +319,7 @@ def main():
     
     # Probability visualization
     if uploaded_file is not None and 'probabilities' in locals():
-        st.subheader("📊 Detailed Predictions")
+        st.subheader("Detailed Predictions")
         
         # Create probability chart
         fig = create_probability_chart(probabilities, class_names)
@@ -315,7 +335,7 @@ def main():
         st.dataframe(prob_df, use_container_width=True)
     
     # Model information
-    st.sidebar.subheader("ℹ️ Model Information")
+    st.sidebar.subheader("Model Information")
     if model is not None:
         total_params = sum(p.numel() for p in model.parameters())
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -327,17 +347,24 @@ def main():
     # About section
     with st.expander("ℹ️ About this App"):
         st.markdown("""
-        This Streamlit app uses your custom CNN model to classify images into one of the trained categories.
+        This Streamlit app uses a custom CNN model to detect and classify car damage.
+        
+        **Damage Types Detected:**
+        - Door dents and scratches
+        - Bumper dents and scratches  
+        - Broken glass/windshield
+        - Broken headlights and taillights
         
         **How to use:**
-        1. Configure the model path and class names in the sidebar
-        2. Upload an image using the file uploader
-        3. View the prediction results and confidence scores
+        1. Upload a clear image of a car
+        2. The model will analyze the image
+        3. View the damage detection results and confidence scores
         
         **Model Architecture:**
         - 5 convolutional layers with batch normalization and LeakyReLU activation
         - Global average pooling
         - 3 fully connected layers with dropout for regularization
+        - Trained specifically for car damage detection
         """)
 
 if __name__ == "__main__":

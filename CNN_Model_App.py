@@ -117,8 +117,6 @@ def main():
         model, device = get_model()
         
         if st.button("Analyze Damage"):
-            with st:
-
                 image_tensor = To_be_transformed_img(img)
                 class_idx, confidence = prediction(model, image_tensor, device)
                 
@@ -129,7 +127,7 @@ def main():
                 st.metric("Detected Damage", damage, f"{confidence_pct:.1f}% confidence")
                 
                 if confidence_pct > 80:
-                    st.info("High confidence in this detection")
+                    st.success("High confidence in this detection")
                 elif confidence_pct > 60:
                     st.info("Moderate confidence in this detection")
                 else:

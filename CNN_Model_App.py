@@ -83,9 +83,9 @@ def prep_img(image):
     ])
     
     if image.mode != 'RGB':
-        img_trans_ed = image.convert('RGB')
+        prep_img = image.convert('RGB')
     
-    return transform(img_trans_ed).unsqueeze(0)
+    return transform(prep_img).unsqueeze(0)
 
 def prediction(model, image_tensor, device):
     image_tensor = image_tensor.to(device)

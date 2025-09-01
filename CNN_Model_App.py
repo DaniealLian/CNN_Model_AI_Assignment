@@ -112,23 +112,27 @@ def main():
     ]
     
     if uploaded_file:
-        img = Image.open(uploaded_file)
-        st.image(img, caption="Uploaded Image", use_container_width=True)
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Uploaded Image", use_container_width=True)
         model, device = get_model()
         
         if st.button("Analyze Damage"):
-                image_tensor = prep_img(img)
-                class_idx, confidence = prediction(model, image_tensor, device)
+                image_tensor = prep_img(image)
+                predict_result, confidence = prediction(model, image_tensor, device)
                 
-                damage = dmg_types[class_idx]
-                confidence_pct = confidence * 100
+                damage = dmg_types[predict_result]
+                conf_percent = confidence * 100
                 
                 st.success("Analysis Complete!")
-                st.metric("Detected Damage", damage, f"{confidence_pct:.1f}% confidence")
+                st.metric(
+                    label="Detected Damage",
+                    value=damage, 
+                    delta=f"{conf_percent:.1f}% confidence"
+                    )
                 
-                if confidence_pct > 80:
+                if conf_percent > 80:
                     st.success("High confidence in this detection")
-                elif confidence_pct > 60:
+                elif conf_percent > 60:
                     st.info("Moderate confidence in this detection")
                 else:
                     st.warning("Low confidence - may need manual verification")

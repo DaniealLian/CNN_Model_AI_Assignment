@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from PIL import Image
 from torchvision import transforms
+import os
 
 class CNN_Model(nn.Module):
     def __init__(self, num_classes=7):
@@ -70,17 +71,24 @@ class CNN_Model(nn.Module):
         x = self.features(x)
         x = self.classifier(x)
         return x
-    
+
 def get_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = CNN_Model()
-    model_dir = 'model_weights.pth'
-
-    state_dict = torch.load(model_dir, map_location=device)
-    model.load_state_dict(state_dict)
-
+    
+    # Load pre-trained weights - you need to have a trained model file
+    # Replace 'model_weights.pth' with your actual model file path
+    model_path = 'model_weights.pth'  # Update this path to your trained model file
+    
+    if os.path.exists(model_path):
+        # Load the state dict
+        state_dict = torch.load(model_path, map_location=device)
+        model.load_state_dict(state_dict)
+    else:
+        st.warning(f"Model weights file not found at {model_path}. Using untrained model.")
+    
     model = model.to(device)
-    model.eval()
+    model.eval()  # Set to evaluation mode
     return model, device
 
 def prep_img(image):
@@ -124,9 +132,12 @@ def main():
     if img_input:
         image = Image.open(img_input)
         st.image(image, caption="Uploaded Image", use_container_width=True)
-        model, device = get_model()
-        image_tensor = prep_img(image)
-        predict_result, confidence = prediction(model, image_tensor, device)
+        
+        # Add a loading spinner while processing
+        with st.spinner('Loading model and analyzing image...'):
+            model, device = get_model()
+            image_tensor = prep_img(image)
+            predict_result, confidence = prediction(model, image_tensor, device)
         
         damage = dmg_types[predict_result]
         conf_percent = confidence * 100
@@ -136,7 +147,7 @@ def main():
             label="Detected Damage",
             value=damage, 
             delta=f"{conf_percent:.1f}% confidence"
-            )
+        )
         
         if conf_percent > 80:
             st.success("High confidence in this detection")
